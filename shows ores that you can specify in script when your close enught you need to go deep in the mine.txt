@@ -1,0 +1,121 @@
+-- Create a ScreenGui
+local gui = Instance.new("ScreenGui")
+gui.Name = "RockMarkerGui"
+gui.Parent = game.Players.LocalPlayer.PlayerGui
+
+-- Create a Frame to hold the list and button
+local frame = Instance.new("Frame")
+frame.Name = "MarkerFrame"
+frame.Position = UDim2.new(0.8, 0, 0.1, 0)
+frame.Size = UDim2.new(0.2, 0, 0.5, 0)
+frame.BackgroundColor3 = Color3.new(0, 0, 0)
+frame.BackgroundTransparency = 0.5
+frame.Parent = gui
+
+-- Create a ScrollingFrame to display the list
+local scrollingFrame = Instance.new("ScrollingFrame")
+scrollingFrame.Name = "MarkerList"
+scrollingFrame.Size = UDim2.new(1, 0, 0.8, 0)
+scrollingFrame.Position = UDim2.new(0, 0, 0, 0)
+scrollingFrame.BackgroundTransparency = 1
+scrollingFrame.BorderSizePixel = 0
+scrollingFrame.Parent = frame
+
+-- Create a Button to start teleportation
+local teleportButton = Instance.new("TextButton")
+teleportButton.Name = "TeleportButton"
+teleportButton.Size = UDim2.new(0.8, 0, 0.1, 0)
+teleportButton.Position = UDim2.new(0.1, 0, 0.85, 0)
+teleportButton.BackgroundColor3 = Color3.new(0, 0, 0)
+teleportButton.BackgroundTransparency = 0.5
+teleportButton.Font = Enum.Font.SourceSans
+teleportButton.TextColor3 = Color3.new(1, 1, 1)
+teleportButton.TextSize = 14
+teleportButton.Text = "Start Teleportation"
+teleportButton.Parent = frame
+
+-- List of attribute values to mark
+local attributeValues = {"Uranium" , "Emerald"}
+
+-- Function to search for Rock parts and create markers
+local function searchForRockParts(parent)
+    local rockParts = parent:GetDescendants()
+    for _, part in ipairs(rockParts) do
+        if part:IsA("BasePart") and part.Name == "Rock" then
+            local attribute = part:FindFirstChild("Type")
+            if attribute and attribute:IsA("StringValue") then
+                for _, value in ipairs(attributeValues) do
+                    if attribute.Value == value then
+                        -- Create a TextButton for the part
+                        local textButton = Instance.new("TextButton")
+                        textButton.Name = "RockButton"
+                        textButton.Size = UDim2.new(1, 0, 0, 20)
+                        textButton.Position = UDim2.new(0, 0, 0, (#scrollingFrame:GetChildren() + 1) * 20)
+                        textButton.BackgroundTransparency = 0.5
+                        textButton.BackgroundColor3 = Color3.new(0, 0, 0)
+                        textButton.Font = Enum.Font.SourceSans
+                        textButton.TextColor3 = Color3.new(1, 1, 1)
+                        textButton.TextSize = 14
+                        textButton.Text = "CFrame: " .. tostring(part.CFrame)
+                        textButton.Parent = scrollingFrame
+
+                        -- Enable copying CFrame value
+                        textButton.MouseButton1Click:Connect(function()
+                            game:GetService("ClipboardService"):Set("CFrame: " .. tostring(part.CFrame))
+                            print("Copied CFrame: " .. tostring(part.CFrame))
+                        end)
+
+                        -- Enable teleportation to the part
+                        textButton.MouseButton2Click:Connect(function()
+                            game.Players.LocalPlayer.Character:SetPrimaryPartCFrame(part.CFrame)
+                        end)
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Function to update the markers and display the CFrame
+local function updateMarkers()
+    scrollingFrame:ClearAllChildren() -- Clear existing markers
+
+    local rocksFolder = workspace:FindFirstChild("Rocks")
+    if rocksFolder then
+        local rockModels = rocksFolder:GetChildren()
+        for _, model in ipairs(rockModels) do
+            if model:IsA("Model") then
+                searchForRockParts(model)
+            end
+        end
+    end
+end
+
+-- Call the updateMarkers function initially
+updateMarkers()
+
+-- Function to teleport to the marked Rock parts
+local function teleportToRockParts()
+    teleportButton.Visible = false -- Hide the teleport button during the teleportation process
+
+    local markedParts = scrollingFrame:GetChildren()
+    for _, marker in ipairs(markedParts) do
+        if marker:IsA("TextButton") then
+            local cframeText = marker.Text
+            local cframeStr = string.match(cframeText, "CFrame: (.+)")
+            local success, cframe = pcall(function()
+                return CFrame.new(cframeStr)
+            end)
+            if success then
+                game.Players.LocalPlayer.Character:SetPrimaryPartCFrame(cframe)
+                wait(10)
+            else
+                print("Error: Failed to teleport to CFrame")
+            end
+        end
+    end
+
+    teleportButton.Visible = true -- Show the teleport button again after the teleportation process completes
+end
+
+teleportButton.MouseButton1Click:Connect(teleportToRockParts)
